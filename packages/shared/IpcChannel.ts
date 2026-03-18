@@ -60,6 +60,7 @@ export enum IpcChannel {
   Webview_SearchHotkey = 'webview:search-hotkey',
   Webview_PrintToPDF = 'webview:print-to-pdf',
   Webview_SaveAsHTML = 'webview:save-as-html',
+  Screenshot_CaptureCurrentDisplay = 'screenshot:capture-current-display',
 
   // Open
   Open_Path = 'open:path',

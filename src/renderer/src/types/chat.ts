@@ -3,6 +3,7 @@ export type Tab = 'assistants' | 'topic'
 export type InputBarToolType =
   | 'new_topic'
   | 'attachment'
+  | 'screenshot'
   | 'thinking'
   | 'web_search'
   | 'url_context'

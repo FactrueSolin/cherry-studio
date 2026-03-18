@@ -70,6 +70,7 @@ import powerMonitorService from './services/PowerMonitorService'
 import { proxyManager } from './services/ProxyManager'
 import { pythonService } from './services/PythonService'
 import { FileServiceManager } from './services/remotefile/FileServiceManager'
+import { screenshotService } from './services/ScreenshotService'
 import { searchService } from './services/SearchService'
 import { SelectionService } from './services/SelectionService'
 import { registerShortcuts, unregisterAllShortcuts } from './services/ShortcutService'
@@ -1014,6 +1015,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     ocrService.ocr(file, provider)
   )
   ipcMain.handle(IpcChannel.OCR_ListProviders, () => ocrService.listProviderIds())
+
+  // Screenshot
+  ipcMain.handle(IpcChannel.Screenshot_CaptureCurrentDisplay, () => screenshotService.captureCurrentDisplay())
 
   // OVMS
   ipcMain.handle(IpcChannel.Ovms_IsSupported, () => isOvmsSupported)

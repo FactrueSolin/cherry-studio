@@ -2,6 +2,7 @@
 // Import all tool definitions to register them
 
 import './attachmentTool'
+import './screenshotTool'
 import './mentionModelsTool'
 import './newTopicTool'
 import './quickPhrasesTool'

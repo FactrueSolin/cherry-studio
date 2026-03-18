@@ -280,6 +280,10 @@ const api = {
     },
     showInFolder: (path: string): Promise<void> => ipcRenderer.invoke(IpcChannel.File_ShowInFolder, path)
   },
+  screenshot: {
+    captureCurrentDisplay: (): Promise<FileMetadata[]> =>
+      ipcRenderer.invoke(IpcChannel.Screenshot_CaptureCurrentDisplay)
+  },
   fs: {
     read: (pathOrUrl: string, encoding?: BufferEncoding) => ipcRenderer.invoke(IpcChannel.Fs_Read, pathOrUrl, encoding),
     readText: (pathOrUrl: string): Promise<string> => ipcRenderer.invoke(IpcChannel.Fs_ReadText, pathOrUrl)
