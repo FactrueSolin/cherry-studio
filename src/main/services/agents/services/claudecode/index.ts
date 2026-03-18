@@ -34,6 +34,7 @@ import type {
 } from '../../interfaces/AgentStreamInterface'
 import { sessionService } from '../SessionService'
 import { buildNamespacedToolCallId } from './claude-stream-state'
+import { resolveAgentPromptVariables } from './promptResolver'
 import { promptForToolApproval } from './tool-permissions'
 import { ClaudeStreamState, transformSDKMessageToStreamParts } from './transform'
 
@@ -305,6 +306,16 @@ class ClaudeCodeService implements AgentServiceInterface {
       return {}
     }
 
+    const resolvedInstructions = await resolveAgentPromptVariables(session.instructions, session)
+
+    logger.debug('Resolved agent system prompt', {
+      hasOriginalInstructions: !!session.instructions,
+      originalContainsPlaceholders: /{{[^}]+}}/.test(session.instructions || ''),
+      resolvedContainsPlaceholders: /{{[^}]+}}/.test(resolvedInstructions),
+      originalLength: session.instructions?.length ?? 0,
+      resolvedLength: resolvedInstructions.length
+    })
+
     // Build SDK options from parameters
     const options: Options = {
       abortController,
@@ -316,11 +327,11 @@ class ClaudeCodeService implements AgentServiceInterface {
         logger.warn('claude stderr', { chunk })
         errorChunks.push(chunk)
       },
-      systemPrompt: session.instructions
+      systemPrompt: resolvedInstructions
         ? {
             type: 'preset',
             preset: 'claude_code',
-            append: `${session.instructions}\n\n${getLanguageInstruction()}`
+            append: `${resolvedInstructions}\n\n${getLanguageInstruction()}`
           }
         : {
             type: 'preset',
