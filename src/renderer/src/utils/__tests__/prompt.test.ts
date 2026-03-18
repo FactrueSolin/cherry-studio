@@ -216,18 +216,18 @@ describe('prompt', () => {
       expect(result).toBe('Broken: {{cmd:[git status}}')
     })
 
-    it('should reject unsafe command separators and replace with empty string', async () => {
+    it('should allow command separators after security relaxation', async () => {
       const result = await replaceCommandPromptInjections('Unsafe: {{cmd:[git status; whoami]}}')
 
-      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
-      expect(result).toBe('Unsafe: ')
+      expect(mockApi.prompt.executeCommand).toHaveBeenCalledWith('git status; whoami')
+      expect(result).toBe('Unsafe: command-output')
     })
 
-    it('should reject commands with shell substitution syntax and replace with empty string', async () => {
+    it('should allow shell substitution syntax after security relaxation', async () => {
       const result = await replaceCommandPromptInjections('Unsafe: {{cmd:[echo $(whoami)]}}')
 
-      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
-      expect(result).toBe('Unsafe: ')
+      expect(mockApi.prompt.executeCommand).toHaveBeenCalledWith('echo $(whoami)')
+      expect(result).toBe('Unsafe: command-output')
     })
 
     it('should reject command longer than safety limit and replace with empty string', async () => {

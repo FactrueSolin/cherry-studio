@@ -134,10 +134,6 @@ function isSafePromptCommand(command: string): boolean {
     return false
   }
 
-  if (/[;&|><`$(){}]/.test(trimmed)) {
-    return false
-  }
-
   return true
 }
 
