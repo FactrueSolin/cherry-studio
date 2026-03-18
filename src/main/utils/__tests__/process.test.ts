@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   autoDiscoverGitBash,
+  executeShellCommand,
   findCommandInShellEnv,
   findExecutable,
   findGitBash,
@@ -1149,6 +1150,92 @@ function createMockChildProcess() {
   mockChild.kill = vi.fn()
   return mockChild
 }
+
+describe('executeShellCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should resolve trimmed stdout on success', async () => {
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('pwd', { env: { PATH: '/usr/bin' }, timeout: 10_000 })
+
+    mockChild.stdout.emit('data', Buffer.from('/tmp/project\n'))
+    mockChild.emit('close', 0)
+
+    await expect(resultPromise).resolves.toBe('/tmp/project')
+  })
+
+  it('should reject on non-zero exit code', async () => {
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('pwd', { env: { PATH: '/usr/bin' }, timeout: 10_000 })
+
+    mockChild.stderr.emit('data', Buffer.from('permission denied'))
+    mockChild.emit('close', 1)
+
+    await expect(resultPromise).rejects.toThrow('permission denied')
+  })
+
+  it('should truncate stdout to maxOutputLength', async () => {
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('pwd', {
+      env: { PATH: '/usr/bin' },
+      timeout: 10_000,
+      maxOutputLength: 5
+    })
+
+    mockChild.stdout.emit('data', Buffer.from('123456789'))
+    mockChild.emit('close', 0)
+
+    await expect(resultPromise).resolves.toBe('12345')
+  })
+
+  it('should kill process when timeout is reached', async () => {
+    vi.useFakeTimers()
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('sleep 20', { env: { PATH: '/usr/bin' }, timeout: 10 })
+
+    vi.advanceTimersByTime(11)
+
+    await expect(resultPromise).rejects.toThrow('Command timed out after 10ms')
+    expect(mockChild.kill).toHaveBeenCalledWith('SIGKILL')
+    vi.useRealTimers()
+  })
+
+  it.skipIf(process.platform === 'win32')('should use /bin/sh -lc on unix-like platforms', async () => {
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('pwd', { env: { PATH: '/usr/bin' }, timeout: 10_000 })
+
+    expect(spawn).toHaveBeenCalledWith('/bin/sh', ['-lc', 'pwd'], expect.any(Object))
+    mockChild.emit('close', 0)
+    await resultPromise
+  })
+
+  it.skipIf(process.platform !== 'win32')('should use cmd.exe /d /s /c on windows', async () => {
+    const mockChild = createMockChildProcess()
+    vi.mocked(spawn).mockReturnValue(mockChild as never)
+
+    const resultPromise = executeShellCommand('dir', { env: { PATH: 'C:\\Windows' }, timeout: 10_000 })
+
+    expect(spawn).toHaveBeenCalledWith(
+      expect.stringMatching(/cmd\.exe$/),
+      ['/d', '/s', '/c', 'dir'],
+      expect.any(Object)
+    )
+    mockChild.emit('close', 0)
+    await resultPromise
+  })
+})
 
 describe('findCommandInShellEnv', () => {
   beforeEach(() => {

@@ -167,6 +167,9 @@ const api = {
     setGitBashPath: (newPath: string | null): Promise<boolean> =>
       ipcRenderer.invoke(IpcChannel.System_SetGitBashPath, newPath)
   },
+  prompt: {
+    executeCommand: (command: string): Promise<string> => ipcRenderer.invoke(IpcChannel.PromptCommand_Execute, command)
+  },
   devTools: {
     toggle: () => ipcRenderer.invoke(IpcChannel.System_ToggleDevTools)
   },

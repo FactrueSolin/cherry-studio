@@ -36,7 +36,7 @@ import { type Assistant, getEffectiveMcpMode, type MCPTool, type Provider, Syste
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { mapRegexToPatterns } from '@renderer/utils/blacklistMatchPattern'
 import { IdleTimeoutController, type IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
-import { replacePromptVariables } from '@renderer/utils/prompt'
+import { resolvePromptVariables } from '@renderer/utils/prompt'
 import { isAIGatewayProvider, isAwsBedrockProvider, isSupportUrlContextProvider } from '@renderer/utils/provider'
 import { DEFAULT_TIMEOUT } from '@shared/config/constant'
 import type { ModelMessage, Tool } from 'ai'
@@ -278,7 +278,7 @@ export async function buildStreamTextParams(
     params.tools = tools
   }
 
-  let systemPrompt = assistant.prompt ? await replacePromptVariables(assistant.prompt, model.name) : ''
+  let systemPrompt = assistant.prompt ? await resolvePromptVariables(assistant.prompt, model.name) : ''
 
   if (getEffectiveMcpMode(assistant) === 'auto') {
     const autoModePrompt = getHubModeSystemPrompt()

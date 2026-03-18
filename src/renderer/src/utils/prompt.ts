@@ -112,8 +112,68 @@ const supportedVariables = [
   '{{model_name}}'
 ]
 
+const COMMAND_INJECTION_REGEX = /{{cmd:\[([^\]\r\n]+)\]}}/g
+const COMMAND_INJECTION_DETECT_REGEX = /{{cmd:\[[^\]\r\n]+\]}}/
+const COMMAND_TIMEOUT_MS = 10_000
+const MAX_COMMAND_LENGTH = 1000
+
 export const containsSupportedVariables = (userSystemPrompt: string): boolean => {
-  return supportedVariables.some((variable) => userSystemPrompt.includes(variable))
+  return (
+    supportedVariables.some((variable) => userSystemPrompt.includes(variable)) ||
+    COMMAND_INJECTION_DETECT_REGEX.test(userSystemPrompt)
+  )
+}
+
+function isSafePromptCommand(command: string): boolean {
+  const trimmed = command.trim()
+  if (!trimmed || trimmed.length > MAX_COMMAND_LENGTH) {
+    return false
+  }
+
+  if (trimmed.includes('\n') || trimmed.includes('\r') || trimmed.includes(']')) {
+    return false
+  }
+
+  if (/[;&|><`$(){}]/.test(trimmed)) {
+    return false
+  }
+
+  return true
+}
+
+export const replaceCommandPromptInjections = async (userSystemPrompt: string): Promise<string> => {
+  if (typeof userSystemPrompt !== 'string' || !userSystemPrompt.includes('{{cmd:[')) {
+    return userSystemPrompt
+  }
+
+  COMMAND_INJECTION_REGEX.lastIndex = 0
+  const matches = [...userSystemPrompt.matchAll(COMMAND_INJECTION_REGEX)]
+  if (matches.length === 0) {
+    return userSystemPrompt
+  }
+
+  const uniqueCommands = [...new Set(matches.map((match) => match[1].trim()))]
+  const commandResults = new Map<string, string>()
+
+  for (const command of uniqueCommands) {
+    if (!isSafePromptCommand(command)) {
+      logger.warn('Unsafe prompt command rejected', { command })
+      commandResults.set(command, '')
+      continue
+    }
+
+    try {
+      const output = await window.api.prompt.executeCommand(command)
+      commandResults.set(command, output.slice(0, 4000))
+    } catch (error) {
+      logger.error(`Failed to execute prompt command within ${COMMAND_TIMEOUT_MS}ms`, error as Error)
+      commandResults.set(command, '')
+    }
+  }
+
+  return userSystemPrompt.replace(COMMAND_INJECTION_REGEX, (_match, command: string) => {
+    return commandResults.get(command.trim()) ?? ''
+  })
 }
 
 export const replacePromptVariables = async (userSystemPrompt: string, modelName?: string): Promise<string> => {
@@ -202,6 +262,11 @@ export const replacePromptVariables = async (userSystemPrompt: string, modelName
   }
 
   return userSystemPrompt
+}
+
+export const resolvePromptVariables = async (userSystemPrompt: string, modelName?: string): Promise<string> => {
+  const builtInResolved = await replacePromptVariables(userSystemPrompt, modelName)
+  return await replaceCommandPromptInjections(builtInResolved)
 }
 
 export const buildSystemPromptWithTools = (userSystemPrompt: string, tools?: MCPTool[]): string => {

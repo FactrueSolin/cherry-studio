@@ -10,6 +10,7 @@ import anthropicService from '@main/services/AnthropicService'
 import { getIpCountry } from '@main/utils/ipService'
 import {
   autoDiscoverGitBash,
+  executeShellCommand,
   getBinaryPath,
   getGitBashPathInfo,
   isBinaryExists,
@@ -520,6 +521,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.System_GetDeviceType, getDeviceType)
   ipcMain.handle(IpcChannel.System_GetHostname, getHostname)
   ipcMain.handle(IpcChannel.System_GetCpuName, getCpuName)
+  ipcMain.handle(IpcChannel.PromptCommand_Execute, async (_, command: string) => {
+    return await executeShellCommand(command, { timeout: 10_000, maxOutputLength: 4000 })
+  })
   ipcMain.handle(IpcChannel.System_CheckGitBash, () => {
     if (!isWin) {
       return true // Non-Windows systems don't need Git Bash

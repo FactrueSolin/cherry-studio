@@ -510,6 +510,65 @@ export async function executeCommand(
   })
 }
 
+export async function executeShellCommand(
+  command: string,
+  options?: {
+    env?: Record<string, string>
+    timeout?: number
+    maxOutputLength?: number
+  }
+): Promise<string> {
+  const env = options?.env ?? (await getShellEnv())
+  const maxOutputLength = options?.maxOutputLength ?? 4000
+
+  return new Promise<string>((resolve, reject) => {
+    const shellCommand = isWin ? process.env.ComSpec || 'cmd.exe' : '/bin/sh'
+    const shellArgs = isWin ? ['/d', '/s', '/c', command] : ['-lc', command]
+    const child = spawn(shellCommand, shellArgs, {
+      env,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+
+    const stdoutChunks: Buffer[] = []
+    const stderrChunks: Buffer[] = []
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdoutChunks.push(Buffer.from(chunk))
+    })
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderrChunks.push(Buffer.from(chunk))
+    })
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+    if (options?.timeout) {
+      timeoutId = setTimeout(() => {
+        child.kill('SIGKILL')
+        reject(new Error(`Command timed out after ${options.timeout}ms`))
+      }, options.timeout)
+    }
+
+    child.on('error', (err) => {
+      if (timeoutId) clearTimeout(timeoutId)
+      reject(err)
+    })
+
+    child.on('close', (code) => {
+      if (timeoutId) clearTimeout(timeoutId)
+
+      const stdout = decodeBufferFromShell(Buffer.concat(stdoutChunks)).slice(0, maxOutputLength)
+      const stderr = decodeBufferFromShell(Buffer.concat(stderrChunks)).slice(0, maxOutputLength)
+
+      if (code === 0) {
+        resolve(stdout.trim())
+      } else {
+        reject(new Error(stderr || stdout || `Command failed with code ${code}`))
+      }
+    })
+  })
+}
+
 /**
  * Common Git installation root directories on Windows
  * Used by findExecutable() (git special case) and findGitBash() to check fallback paths

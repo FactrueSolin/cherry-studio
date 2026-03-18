@@ -259,6 +259,7 @@ export enum IpcChannel {
   System_GetDeviceType = 'system:getDeviceType',
   System_GetHostname = 'system:getHostname',
   System_GetCpuName = 'system:getCpuName',
+  PromptCommand_Execute = 'prompt:command:execute',
   System_CheckGitBash = 'system:checkGitBash',
   System_GetGitBashPath = 'system:getGitBashPath',
   System_GetGitBashPathInfo = 'system:getGitBashPathInfo',

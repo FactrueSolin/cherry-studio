@@ -6,7 +6,9 @@ import {
   AvailableTools,
   buildSystemPromptWithThinkTool,
   buildSystemPromptWithTools,
+  replaceCommandPromptInjections,
   replacePromptVariables,
+  resolvePromptVariables,
   SYSTEM_PROMPT,
   THINK_TOOL_PROMPT,
   ToolUseExamples
@@ -14,6 +16,9 @@ import {
 
 // Mock window.api
 const mockApi = {
+  prompt: {
+    executeCommand: vi.fn()
+  },
   system: {
     getDeviceType: vi.fn()
   },
@@ -83,6 +88,7 @@ describe('prompt', () => {
     vi.setSystemTime(mockDate)
 
     // 设置默认的 mock 返回值
+    mockApi.prompt.executeCommand.mockResolvedValue('command-output')
     mockApi.system.getDeviceType.mockResolvedValue('macOS')
     mockApi.getAppInfo.mockResolvedValue({ arch: 'darwin64' })
   })
@@ -165,6 +171,71 @@ describe('prompt', () => {
     it('should handle non-string input gracefully', async () => {
       const result = await replacePromptVariables(null as any)
       expect(result).toBe(null)
+    })
+
+    it('should resolve cmd injections after built-in replacements', async () => {
+      const result = await resolvePromptVariables('Today: {{date}}, Branch: {{cmd:[git branch --show-current]}}')
+
+      expect(mockApi.prompt.executeCommand).toHaveBeenCalledWith('git branch --show-current')
+      expect(result).toContain('Branch: command-output')
+    })
+
+    it('should replace failed cmd injections with empty string', async () => {
+      mockApi.prompt.executeCommand.mockRejectedValueOnce(new Error('command failed'))
+
+      const result = await resolvePromptVariables('Branch: {{cmd:[git branch --show-current]}}')
+
+      expect(result).toBe('Branch: ')
+    })
+
+    it('should deduplicate duplicate cmd injections in one prompt', async () => {
+      const result = await resolvePromptVariables(
+        'A: {{cmd:[git branch --show-current]}}, B: {{cmd:[git branch --show-current]}}'
+      )
+
+      expect(mockApi.prompt.executeCommand).toHaveBeenCalledTimes(1)
+      expect(result).toBe('A: command-output, B: command-output')
+    })
+
+    it('should resolve multiple different cmd injections', async () => {
+      mockApi.prompt.executeCommand
+        .mockResolvedValueOnce('main')
+        .mockResolvedValueOnce('/Users/futiansi/Sync/cherry-studio')
+
+      const result = await resolvePromptVariables('Branch: {{cmd:[git branch --show-current]}}, Dir: {{cmd:[pwd]}}')
+
+      expect(mockApi.prompt.executeCommand).toHaveBeenNthCalledWith(1, 'git branch --show-current')
+      expect(mockApi.prompt.executeCommand).toHaveBeenNthCalledWith(2, 'pwd')
+      expect(result).toBe('Branch: main, Dir: /Users/futiansi/Sync/cherry-studio')
+    })
+
+    it('should leave malformed cmd syntax unchanged', async () => {
+      const result = await replaceCommandPromptInjections('Broken: {{cmd:[git status}}')
+
+      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
+      expect(result).toBe('Broken: {{cmd:[git status}}')
+    })
+
+    it('should reject unsafe command separators and replace with empty string', async () => {
+      const result = await replaceCommandPromptInjections('Unsafe: {{cmd:[git status; whoami]}}')
+
+      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
+      expect(result).toBe('Unsafe: ')
+    })
+
+    it('should reject commands with shell substitution syntax and replace with empty string', async () => {
+      const result = await replaceCommandPromptInjections('Unsafe: {{cmd:[echo $(whoami)]}}')
+
+      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
+      expect(result).toBe('Unsafe: ')
+    })
+
+    it('should reject command longer than safety limit and replace with empty string', async () => {
+      const longCommand = `{{cmd:[${'a'.repeat(1001)}]}}`
+      const result = await replaceCommandPromptInjections(`Long: ${longCommand}`)
+
+      expect(mockApi.prompt.executeCommand).not.toHaveBeenCalled()
+      expect(result).toBe('Long: ')
     })
   })
 

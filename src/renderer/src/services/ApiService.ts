@@ -23,7 +23,7 @@ import { getErrorMessage, isAbortError } from '@renderer/utils/error'
 import { purifyMarkdownImages } from '@renderer/utils/markdown'
 import { isPromptToolUse, isSupportedToolUse } from '@renderer/utils/mcp-tools'
 import { findFileBlocks, getMainTextContent } from '@renderer/utils/messageUtils/find'
-import { containsSupportedVariables, replacePromptVariables } from '@renderer/utils/prompt'
+import { containsSupportedVariables, resolvePromptVariables } from '@renderer/utils/prompt'
 import { NOT_SUPPORT_API_KEY_PROVIDER_TYPES, NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
 import { isEmpty, takeRight } from 'lodash'
 
@@ -161,7 +161,7 @@ export async function transformMessagesAndFetch(
     const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
 
     // replace prompt variables
-    assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)
+    assistant.prompt = await resolvePromptVariables(assistant.prompt, assistant.model?.name)
 
     // inject knowledge search prompt into model messages
     await injectUserMessageWithKnowledgeSearchPrompt({
@@ -294,7 +294,7 @@ export async function fetchMessagesSummary({
   const model = getQuickModel()
 
   if (prompt && containsSupportedVariables(prompt)) {
-    prompt = await replacePromptVariables(prompt, model.name)
+    prompt = await resolvePromptVariables(prompt, model.name)
   }
 
   // 总结上下文总是取最后5条消息
@@ -408,7 +408,7 @@ export async function fetchNoteSummary({ content, assistant }: { content: string
   const model = getQuickModel() || resolvedAssistant.model || getDefaultModel()
 
   if (prompt && containsSupportedVariables(prompt)) {
-    prompt = await replacePromptVariables(prompt, model.name)
+    prompt = await resolvePromptVariables(prompt, model.name)
   }
 
   const provider = getProviderByModel(model)
