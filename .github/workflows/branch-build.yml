@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           sudo -H pip install setuptools
-          pnpm build:mac:arm64
+          pnpm build:mac
 
       - name: Upload Windows x64 artifacts
         if: matrix.target == 'win-x64'
@@ -96,7 +96,9 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: |
             dist/*-arm64.dmg
+            dist/*-x64.dmg
             dist/*-arm64.zip
+            dist/*-x64.zip
             dist/latest*.yml
             dist/*.blockmap
           retention-days: 7
