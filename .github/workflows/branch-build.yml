@@ -17,8 +17,8 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            target: win-x86
-            artifact_name: cherry-studio-win-x86-${{ github.sha }}
+            target: win-x64
+            artifact_name: cherry-studio-win-x64-${{ github.sha }}
           - os: macos-latest
             target: mac-arm64
             artifact_name: cherry-studio-mac-arm64-${{ github.sha }}
@@ -64,11 +64,11 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
-      - name: Build Windows x86
-        if: matrix.target == 'win-x86'
+      - name: Build Windows x64
+        if: matrix.target == 'win-x64'
         shell: bash
         run: |
-          dotenv npm run build && electron-builder --win --ia32
+          pnpm build:win:x64
 
       - name: Build macOS arm64
         if: matrix.target == 'mac-arm64'
@@ -77,14 +77,14 @@ jobs:
           sudo -H pip install setuptools
           pnpm build:mac:arm64
 
-      - name: Upload Windows x86 artifacts
-        if: matrix.target == 'win-x86'
+      - name: Upload Windows x64 artifacts
+        if: matrix.target == 'win-x64'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: |
-            dist/*-ia32-setup.exe
-            dist/*-ia32-portable.exe
+            dist/*-x64-setup.exe
+            dist/*-x64-portable.exe
             dist/latest*.yml
             dist/*.blockmap
           retention-days: 7
