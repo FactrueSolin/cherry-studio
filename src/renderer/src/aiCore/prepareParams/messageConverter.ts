@@ -11,9 +11,11 @@ import type {
   FileMessageBlock,
   ImageMessageBlock,
   MainTextMessageBlock,
-  ThinkingMessageBlock
+  ThinkingMessageBlock,
+  ToolMessageBlock
 } from '@renderer/types/newMessage'
 import {
+  findAllBlocks,
   findFileBlocks,
   findImageBlocks,
   findMainTextBlocks,
@@ -36,6 +38,47 @@ import { convertFileBlockToFilePart, convertFileBlockToTextPart } from './filePr
 
 const logger = loggerService.withContext('messageConverter')
 
+function stringifyToolValue(value: unknown): string {
+  if (value === undefined) {
+    return 'undefined'
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+function serializeToolBlocksToText(toolBlocks: ToolMessageBlock[]): string {
+  if (toolBlocks.length === 0) {
+    return ''
+  }
+
+  return toolBlocks
+    .map((toolBlock, index) => {
+      const rawToolResponse = toolBlock.metadata?.rawMcpToolResponse
+      const toolName = rawToolResponse?.tool?.name || toolBlock.toolName || 'unknown_tool'
+      const toolArguments = rawToolResponse?.arguments ?? toolBlock.arguments
+      const toolResult = rawToolResponse?.response ?? toolBlock.content
+
+      return [
+        `[Tool Invocation ${index + 1}]`,
+        `Tool: ${toolName}`,
+        'Arguments:',
+        stringifyToolValue(toolArguments),
+        '',
+        'Result:',
+        stringifyToolValue(toolResult)
+      ].join('\n')
+    })
+    .join('\n\n')
+}
+
 /**
  * 转换消息为 AI SDK 参数格式
  * 基于 OpenAI 格式的通用转换，支持文本、图片和文件
@@ -54,6 +97,7 @@ export async function convertMessageToSdkParam(
     return convertMessageToUserModelMessage(content, fileBlocks, imageBlocks, isVisionModel, model)
   } else {
     return convertMessageToAssistantModelMessage(
+      message,
       content,
       fileBlocks,
       imageBlocks,
@@ -175,6 +219,7 @@ async function convertMessageToUserModelMessage(
  * 需要添加占位文本，因为某些 API（如 Gemini）不接受空的 assistant 消息
  */
 async function convertMessageToAssistantModelMessage(
+  message: Message,
   content: string,
   fileBlocks: FileMessageBlock[],
   imageBlocks: ImageMessageBlock[],
@@ -183,6 +228,7 @@ async function convertMessageToAssistantModelMessage(
   model?: Model
 ): Promise<AssistantModelMessage> {
   const parts: Array<TextPart | ReasoningPart | FilePart> = []
+  const toolBlocks = findAllBlocks(message).filter((block): block is ToolMessageBlock => block.type === 'tool')
 
   // Add reasoning blocks first (required by AWS Bedrock for Claude extended thinking)
   for (const thinkingBlock of thinkingBlocks) {
@@ -209,6 +255,11 @@ async function convertMessageToAssistantModelMessage(
     }
 
     parts.push(textPart)
+  }
+
+  const serializedToolContent = serializeToolBlocksToText(toolBlocks)
+  if (serializedToolContent) {
+    parts.push({ type: 'text', text: serializedToolContent })
   }
 
   for (const fileBlock of fileBlocks) {

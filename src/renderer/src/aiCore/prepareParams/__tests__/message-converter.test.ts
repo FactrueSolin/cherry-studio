@@ -9,6 +9,7 @@ import {
   MessageBlockStatus,
   MessageBlockType,
   type ThinkingMessageBlock,
+  type ToolMessageBlock,
   UserMessageStatus
 } from '@renderer/types/newMessage'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -37,6 +38,9 @@ type MockableMessage = Message & {
   __mockImageBlocks?: ImageMessageBlock[]
   __mockThinkingBlocks?: ThinkingMessageBlock[]
   __mockMainTextBlocks?: MainTextMessageBlock[]
+  __mockAllBlocks?: Array<
+    MainTextMessageBlock | ThinkingMessageBlock | ImageMessageBlock | FileMessageBlock | ToolMessageBlock
+  >
 }
 
 vi.mock('@renderer/utils/messageUtils/find', () => ({
@@ -44,7 +48,8 @@ vi.mock('@renderer/utils/messageUtils/find', () => ({
   findFileBlocks: (message: Message) => (message as MockableMessage).__mockFileBlocks ?? [],
   findImageBlocks: (message: Message) => (message as MockableMessage).__mockImageBlocks ?? [],
   findThinkingBlocks: (message: Message) => (message as MockableMessage).__mockThinkingBlocks ?? [],
-  findMainTextBlocks: (message: Message) => (message as MockableMessage).__mockMainTextBlocks ?? []
+  findMainTextBlocks: (message: Message) => (message as MockableMessage).__mockMainTextBlocks ?? [],
+  findAllBlocks: (message: Message) => (message as MockableMessage).__mockAllBlocks ?? []
 }))
 
 import { convertMessagesToSdkMessages, convertMessageToSdkParam } from '../messageConverter'
@@ -136,6 +141,23 @@ const createMainTextBlock = (
   createdAt: overrides.createdAt ?? new Date(2024, 0, 1, 0, 0, blockCounter).toISOString(),
   status: overrides.status ?? MessageBlockStatus.SUCCESS,
   content: overrides.content ?? '',
+  ...overrides
+})
+
+const createToolBlock = (
+  messageId: string,
+  overrides: Partial<Omit<ToolMessageBlock, 'type' | 'messageId'>> = {}
+): ToolMessageBlock => ({
+  id: overrides.id ?? `tool-block-${++blockCounter}`,
+  messageId,
+  type: MessageBlockType.TOOL,
+  createdAt: overrides.createdAt ?? new Date(2024, 0, 1, 0, 0, blockCounter).toISOString(),
+  status: overrides.status ?? MessageBlockStatus.SUCCESS,
+  toolId: overrides.toolId ?? `tool-${blockCounter}`,
+  toolName: overrides.toolName,
+  arguments: overrides.arguments,
+  content: overrides.content,
+  metadata: overrides.metadata,
   ...overrides
 })
 
@@ -629,6 +651,63 @@ describe('messageConverter', () => {
         {
           role: 'assistant',
           content: [{ type: 'text', text: 'Response with image' }]
+        }
+      ])
+    })
+
+    it('serializes tool blocks into assistant text content', async () => {
+      const model = createModel()
+      const user = createMessage('user')
+      user.__mockContent = '查一下北京天气'
+
+      const assistant = createMessage('assistant')
+      assistant.__mockContent = '北京当前 23 度，晴'
+      assistant.__mockAllBlocks = [
+        createToolBlock(assistant.id, {
+          toolName: 'weather.getCurrent',
+          arguments: { city: '北京' },
+          content: { temp: 23, condition: '晴' },
+          metadata: {
+            rawMcpToolResponse: {
+              id: 'tool-call-1',
+              status: 'success',
+              tool: {
+                id: 'weather-tool',
+                name: 'weather.getCurrent',
+                serverId: 'server-1',
+                serverName: 'Weather Server',
+                description: 'Get current weather',
+                inputSchema: { type: 'object' }
+              },
+              arguments: { city: '北京' },
+              response: { temp: 23, condition: '晴' }
+            } as any
+          }
+        })
+      ]
+
+      const result = await convertMessagesToSdkMessages([user, assistant], model)
+
+      expect(result).toEqual([
+        {
+          role: 'user',
+          content: [{ type: 'text', text: '查一下北京天气' }]
+        },
+        {
+          role: 'assistant',
+          content: [
+            { type: 'text', text: '北京当前 23 度，晴' },
+            {
+              type: 'text',
+              text:
+                '[Tool Invocation 1]\n' +
+                'Tool: weather.getCurrent\n' +
+                'Arguments:\n' +
+                '{\n  "city": "北京"\n}\n\n' +
+                'Result:\n' +
+                '{\n  "temp": 23,\n  "condition": "晴"\n}'
+            }
+          ]
         }
       ])
     })
