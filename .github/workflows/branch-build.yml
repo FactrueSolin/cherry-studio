@@ -18,10 +18,10 @@ jobs:
         include:
           - os: windows-latest
             target: win-x86
-            artifact_name: cherry-studio-win-x86-${{ github.ref_name }}-${{ github.sha }}
+            artifact_name: cherry-studio-win-x86-${{ github.sha }}
           - os: macos-latest
             target: mac-arm64
-            artifact_name: cherry-studio-mac-arm64-${{ github.ref_name }}-${{ github.sha }}
+            artifact_name: cherry-studio-mac-arm64-${{ github.sha }}
 
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
