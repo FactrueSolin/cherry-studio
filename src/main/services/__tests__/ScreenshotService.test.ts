@@ -4,6 +4,7 @@ const mockToPNG = vi.fn()
 const mockGetSources = vi.fn()
 const mockGetAllDisplays = vi.fn()
 const mockSavePastedImage = vi.fn()
+const mockStitchImages = vi.fn()
 
 vi.mock('electron', () => ({
   desktopCapturer: {
@@ -18,6 +19,10 @@ vi.mock('@main/services/FileStorage', () => ({
   fileStorage: {
     savePastedImage: mockSavePastedImage
   }
+}))
+
+vi.mock('@main/helpers/rustSdk', () => ({
+  stitchImages: mockStitchImages
 }))
 
 describe('ScreenshotService', () => {
@@ -60,9 +65,15 @@ describe('ScreenshotService', () => {
       type: 'image',
       count: 1
     })
+
+    mockStitchImages.mockResolvedValue({
+      imageBase64: Buffer.from('stitched-png').toString('base64'),
+      stitchedWidth: 180,
+      stitchedHeight: 60
+    })
   })
 
-  it('captures all displays and saves them as PNG attachments', async () => {
+  it('captures all displays, stitches them, and saves a single PNG attachment', async () => {
     const { screenshotService } = await import('../ScreenshotService')
 
     const result = await screenshotService.captureCurrentDisplay()
@@ -72,10 +83,30 @@ describe('ScreenshotService', () => {
       thumbnailSize: { width: 200, height: 120 },
       fetchWindowIcons: false
     })
-    expect(mockSavePastedImage).toHaveBeenCalledTimes(2)
-    expect(result).toHaveLength(2)
-    expect(result[0].origin_name).toMatch(/^screenshot-.*-1\.png$/)
-    expect(result[1].origin_name).toMatch(/^screenshot-.*-2\.png$/)
+    expect(mockStitchImages).toHaveBeenCalledTimes(1)
+    expect(mockStitchImages).toHaveBeenCalledWith({
+      stitchedWidth: 180,
+      stitchedHeight: 60,
+      images: [
+        {
+          imageBase64: Buffer.from('png-binary').toString('base64'),
+          width: 100,
+          height: 60,
+          offsetX: 0,
+          offsetY: 0
+        },
+        {
+          imageBase64: Buffer.from('png-binary').toString('base64'),
+          width: 80,
+          height: 50,
+          offsetX: 100,
+          offsetY: 0
+        }
+      ]
+    })
+    expect(mockSavePastedImage).toHaveBeenCalledTimes(1)
+    expect(result).toHaveLength(1)
+    expect(result[0].origin_name).toMatch(/^screenshot-.*\.png$/)
   })
 
   it('throws when no screen source is available', async () => {

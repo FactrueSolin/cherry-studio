@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { stitchImages } from '@main/helpers/rustSdk'
 import { fileStorage } from '@main/services/FileStorage'
 import type { FileMetadata } from '@types'
 import { desktopCapturer, screen } from 'electron'
@@ -46,8 +47,14 @@ class ScreenshotService {
       throw new Error('No matched display source available for screenshot capture')
     }
 
-    const files = await Promise.all(
-      matchedSources.map(async ({ source, index, display }) => {
+    const stitchedWidth = matchedSources.reduce((sum, { display }) => sum + display.size.width, 0)
+    const stitchedHeight = matchedSources.reduce((max, { display }) => Math.max(max, display.size.height), 1)
+
+    let currentOffsetX = 0
+    const stitchRequest = {
+      stitchedWidth,
+      stitchedHeight,
+      images: matchedSources.map(({ source, index, display }) => {
         const screenSource = source!
         const pngBuffer = screenSource.thumbnail.toPNG()
 
@@ -55,17 +62,35 @@ class ScreenshotService {
           throw new Error(`Captured screenshot is empty for display ${display.id || index}`)
         }
 
-        const file = await fileStorage.savePastedImage({} as Electron.IpcMainInvokeEvent, pngBuffer, '.png')
-
-        return {
-          ...file,
-          origin_name: `screenshot-${timestamp}-${index + 1}.png`
+        const item = {
+          imageBase64: pngBuffer.toString('base64'),
+          width: display.size.width,
+          height: display.size.height,
+          offsetX: currentOffsetX,
+          offsetY: 0
         }
+
+        currentOffsetX += display.size.width
+        return item
       })
-    )
+    }
+
+    const stitched = await stitchImages(stitchRequest)
+    const stitchedBuffer = Buffer.from(stitched.imageBase64, 'base64')
+    const file = await fileStorage.savePastedImage({} as Electron.IpcMainInvokeEvent, stitchedBuffer, '.png')
+
+    const files = [
+      {
+        ...file,
+        origin_name: `screenshot-${timestamp}.png`
+      }
+    ]
 
     logger.info('Captured screenshots for all displays', {
-      count: files.length
+      count: matchedSources.length,
+      stitchedWidth,
+      stitchedHeight,
+      outputCount: files.length
     })
 
     return files
