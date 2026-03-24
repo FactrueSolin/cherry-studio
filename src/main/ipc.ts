@@ -40,6 +40,7 @@ import type { ProxyConfig } from 'electron'
 import { BrowserWindow, dialog, ipcMain, session, shell, systemPreferences, webContents } from 'electron'
 import fontList from 'font-list'
 
+import { uiControlHelper } from './helpers/uiControl'
 import { agentMessageRepository } from './services/agents/database'
 import { PluginService } from './services/agents/plugins/PluginService'
 import { analyticsService } from './services/AnalyticsService'
@@ -827,6 +828,38 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   })
   ipcMain.handle(IpcChannel.Mcp_GetServerVersion, mcpService.getServerVersion)
   ipcMain.handle(IpcChannel.Mcp_GetServerLogs, mcpService.getServerLogs)
+
+  ipcMain.handle(IpcChannel.UiControl_MouseClick, async (_, payload: { x: number; y: number }) =>
+    uiControlHelper.mouse.click(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_MouseRightClick, async (_, payload: { x: number; y: number }) =>
+    uiControlHelper.mouse.rightClick(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_MouseDoubleClick, async (_, payload: { x: number; y: number }) =>
+    uiControlHelper.mouse.doubleClick(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_MouseHover, async (_, payload: { x: number; y: number }) =>
+    uiControlHelper.mouse.hover(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_KeyboardTypeText, async (_, payload: { text: string }) =>
+    uiControlHelper.keyboard.typeText(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_KeyboardPressKey, async (_, payload: { key: string }) =>
+    uiControlHelper.keyboard.pressKey(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_KeyboardHotkey, async (_, payload: { modifiers: string[]; key: string }) =>
+    uiControlHelper.keyboard.hotkey(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_AppOpen, async (_, payload: { appName: string }) =>
+    uiControlHelper.application.open(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_AppClose, async (_, payload: { appName: string }) =>
+    uiControlHelper.application.close(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_AppFocus, async (_, payload: { appName: string }) =>
+    uiControlHelper.application.focus(payload)
+  )
+  ipcMain.handle(IpcChannel.UiControl_AppListRunning, async () => uiControlHelper.application.listRunning())
 
   // DXT upload handler
   ipcMain.handle(IpcChannel.Mcp_UploadDxt, async (event, fileBuffer: ArrayBuffer, fileName: string) => {

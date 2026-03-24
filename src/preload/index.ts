@@ -436,6 +436,26 @@ const api = {
       return () => ipcRenderer.off(IpcChannel.Mcp_ServerLog, listener)
     }
   },
+  uiControl: {
+    mouse: {
+      click: (x: number, y: number) => ipcRenderer.invoke(IpcChannel.UiControl_MouseClick, { x, y }),
+      rightClick: (x: number, y: number) => ipcRenderer.invoke(IpcChannel.UiControl_MouseRightClick, { x, y }),
+      doubleClick: (x: number, y: number) => ipcRenderer.invoke(IpcChannel.UiControl_MouseDoubleClick, { x, y }),
+      hover: (x: number, y: number) => ipcRenderer.invoke(IpcChannel.UiControl_MouseHover, { x, y })
+    },
+    keyboard: {
+      typeText: (text: string) => ipcRenderer.invoke(IpcChannel.UiControl_KeyboardTypeText, { text }),
+      pressKey: (key: string) => ipcRenderer.invoke(IpcChannel.UiControl_KeyboardPressKey, { key }),
+      hotkey: (modifiers: string[], key: string) =>
+        ipcRenderer.invoke(IpcChannel.UiControl_KeyboardHotkey, { modifiers, key })
+    },
+    application: {
+      open: (appName: string) => ipcRenderer.invoke(IpcChannel.UiControl_AppOpen, { appName }),
+      close: (appName: string) => ipcRenderer.invoke(IpcChannel.UiControl_AppClose, { appName }),
+      focus: (appName: string) => ipcRenderer.invoke(IpcChannel.UiControl_AppFocus, { appName }),
+      listRunning: () => ipcRenderer.invoke(IpcChannel.UiControl_AppListRunning)
+    }
+  },
   python: {
     execute: (script: string, context?: Record<string, any>, timeout?: number) =>
       ipcRenderer.invoke(IpcChannel.Python_Execute, script, context, timeout)

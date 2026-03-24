@@ -61,6 +61,17 @@ export enum IpcChannel {
   Webview_PrintToPDF = 'webview:print-to-pdf',
   Webview_SaveAsHTML = 'webview:save-as-html',
   Screenshot_CaptureCurrentDisplay = 'screenshot:capture-current-display',
+  UiControl_MouseClick = 'ui-control:mouse-click',
+  UiControl_MouseRightClick = 'ui-control:mouse-right-click',
+  UiControl_MouseDoubleClick = 'ui-control:mouse-double-click',
+  UiControl_MouseHover = 'ui-control:mouse-hover',
+  UiControl_KeyboardTypeText = 'ui-control:keyboard-type-text',
+  UiControl_KeyboardPressKey = 'ui-control:keyboard-press-key',
+  UiControl_KeyboardHotkey = 'ui-control:keyboard-hotkey',
+  UiControl_AppOpen = 'ui-control:app-open',
+  UiControl_AppClose = 'ui-control:app-close',
+  UiControl_AppFocus = 'ui-control:app-focus',
+  UiControl_AppListRunning = 'ui-control:app-list-running',
 
   // Open
   Open_Path = 'open:path',

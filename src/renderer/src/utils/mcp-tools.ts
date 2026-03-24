@@ -110,13 +110,15 @@ export function openAIToolsToMcpTool(
 export async function callBuiltInTool(toolResponse: MCPToolResponse): Promise<MCPCallToolResponse | undefined> {
   logger.info(`[BuiltIn] Calling Built-in Tool: ${toolResponse.tool.name}`, toolResponse.tool)
 
-  if (
-    toolResponse.tool.name === 'think' &&
+  const args =
     typeof toolResponse.arguments === 'object' &&
     toolResponse.arguments !== null &&
     !Array.isArray(toolResponse.arguments)
-  ) {
-    const thought = toolResponse.arguments?.thought
+      ? toolResponse.arguments
+      : undefined
+
+  if (toolResponse.tool.name === 'think' && args) {
+    const thought = args?.thought
     return {
       isError: false,
       content: [
@@ -126,6 +128,62 @@ export async function callBuiltInTool(toolResponse: MCPToolResponse): Promise<MC
         }
       ]
     }
+  }
+
+  if (toolResponse.tool.name === 'click' && args) {
+    const result = await window.api.uiControl.mouse.click(Number(args.x), Number(args.y))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'right_click' && args) {
+    const result = await window.api.uiControl.mouse.rightClick(Number(args.x), Number(args.y))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'double_click' && args) {
+    const result = await window.api.uiControl.mouse.doubleClick(Number(args.x), Number(args.y))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'hover' && args) {
+    const result = await window.api.uiControl.mouse.hover(Number(args.x), Number(args.y))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'type_text' && args) {
+    const result = await window.api.uiControl.keyboard.typeText(String(args.text ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'press_key' && args) {
+    const result = await window.api.uiControl.keyboard.pressKey(String(args.key ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'hotkey' && args) {
+    const modifiers = Array.isArray(args.modifiers) ? args.modifiers.map(String) : []
+    const result = await window.api.uiControl.keyboard.hotkey(modifiers, String(args.key ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'open_application' && args) {
+    const result = await window.api.uiControl.application.open(String(args.app_name ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'close_application' && args) {
+    const result = await window.api.uiControl.application.close(String(args.app_name ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'focus_application' && args) {
+    const result = await window.api.uiControl.application.focus(String(args.app_name ?? ''))
+    return { isError: false, content: [{ type: 'text', text: result }] }
+  }
+
+  if (toolResponse.tool.name === 'list_running_applications') {
+    const result = await window.api.uiControl.application.listRunning()
+    return { isError: false, content: [{ type: 'text', text: JSON.stringify(result) }] }
   }
 
   return undefined
