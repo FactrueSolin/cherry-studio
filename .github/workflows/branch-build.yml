@@ -1,9 +1,6 @@
 name: Branch Build
 
 on:
-  push:
-    branches:
-      - feat/main/screencapturer
   workflow_dispatch:
 
 permissions:
