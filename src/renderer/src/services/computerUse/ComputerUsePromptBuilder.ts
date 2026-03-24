@@ -1,5 +1,7 @@
 import type { ComputerUsePromptContext } from './types'
 
+export const COMPUTER_USE_MODE_MARKER = '你现在处于 computer use 模式。'
+
 function formatTools(tools: ComputerUsePromptContext['availableTools']): string {
   if (!tools.length) {
     return '- 无可用工具'
@@ -24,7 +26,7 @@ export function buildComputerUseSystemPrompt({
   const sections = [
     assistantPrompt?.trim(),
     [
-      '你现在处于 computer use 模式。',
+      COMPUTER_USE_MODE_MARKER,
       '你可以观察当前屏幕截图，并调用电脑控制工具逐步完成任务。',
       '每次只做最必要的一步操作。',
       '如果截图没有变化，不要重复执行同样的动作。',

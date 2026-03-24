@@ -825,13 +825,13 @@
         "title": "Clear all messages?"
       },
       "collapse": "Collapse",
-      "context_count": {
-        "tip": "Context / Max Context"
-      },
       "computer_use": {
         "disable": "Disable computer use",
         "enable": "Enable computer use",
         "label": "computer use"
+      },
+      "context_count": {
+        "tip": "Context / Max Context"
       },
       "estimated_tokens": {
         "tip": "Estimated tokens"

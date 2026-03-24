@@ -23,7 +23,16 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/.claude/**", "!**/.vscode/**", "!**/.conductor/**"],
+    "includes": [
+      "**",
+      "!**/.claude/**",
+      "!**/.vscode/**",
+      "!**/.conductor/**",
+      "!.cargo-tools/**",
+      "!rust-sdk/pkg/**",
+      "!rust-sdk/target/**",
+      "!uicontrol/target/**"
+    ],
     "maxSize": 2097152
   },
   "formatter": {
@@ -42,13 +51,17 @@
       "!.github/**",
       "!.husky/**",
       "!.vscode/**",
+      "!.cargo-tools/**",
       "!*.yaml",
       "!*.yml",
       "!*.mjs",
       "!*.cjs",
       "!*.md",
+      "!rust-sdk/pkg/**",
+      "!rust-sdk/target/**",
       "!src/main/integration/**",
-      "!**/tailwind.css"
+      "!**/tailwind.css",
+      "!uicontrol/target/**"
     ],
     "indentStyle": "space",
     "indentWidth": 2,
