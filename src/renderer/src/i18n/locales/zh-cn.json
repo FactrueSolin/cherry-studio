@@ -828,6 +828,11 @@
       "context_count": {
         "tip": "上下文数 / 最大上下文数"
       },
+      "computer_use": {
+        "disable": "关闭 computer use",
+        "enable": "开启 computer use",
+        "label": "computer use"
+      },
       "estimated_tokens": {
         "tip": "预估 Token 数"
       },

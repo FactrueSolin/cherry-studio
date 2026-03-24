@@ -24,6 +24,8 @@ import {
 } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
 import { getDefaultTopic } from '@renderer/services/AssistantService'
 import { CacheService } from '@renderer/services/CacheService'
+import { buildComputerUseInstruction } from '@renderer/services/computerUse/ComputerUseMessageBuilder'
+import { buildComputerUseSystemPrompt } from '@renderer/services/computerUse/ComputerUsePromptBuilder'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import FileManager from '@renderer/services/FileManager'
 import { checkRateLimit, getUserMessage } from '@renderer/services/MessagesService'
@@ -32,6 +34,7 @@ import { estimateTextTokens as estimateTxtTokens, estimateUserPromptUsage } from
 import WebSearchService from '@renderer/services/WebSearchService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
+import { BUILT_IN_TOOLS } from '@renderer/tools'
 import {
   type Assistant,
   type FileMetadata,
@@ -137,8 +140,8 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   const scope = topic.type ?? TopicType.Chat
   const config = getInputbarConfig(scope)
 
-  const { files, mentionedModels, selectedKnowledgeBases } = useInputbarToolsState()
-  const { setFiles, setMentionedModels, setSelectedKnowledgeBases } = useInputbarToolsDispatch()
+  const { files, mentionedModels, selectedKnowledgeBases, computerUseEnabled } = useInputbarToolsState()
+  const { setFiles, setMentionedModels, setSelectedKnowledgeBases, setComputerUseRunning } = useInputbarToolsDispatch()
   const { setCouldAddImageFile } = useInputbarToolsInternalDispatch()
 
   const { text, setText } = useInputText({
@@ -246,11 +249,38 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     EventEmitter.emit(EVENT_NAMES.SEND_MESSAGE, { topicId: topic.id, traceId: parent?.spanContext().traceId })
 
     try {
+      setComputerUseRunning(computerUseEnabled)
       const uploadedFiles = await FileManager.uploadFiles(files)
 
-      const baseUserMessage: MessageInputBaseParams = { assistant, topic, content: text }
-      if (uploadedFiles) {
-        baseUserMessage.files = uploadedFiles
+      let assistantForSend = assistant
+      let contentForSend = text
+      let filesForSend = uploadedFiles
+
+      if (computerUseEnabled) {
+        const screenshots = await window.api.screenshot.captureCurrentDisplay()
+        const runningApplications = await window.api.uiControl.application.listRunning().catch(() => [])
+
+        assistantForSend = {
+          ...assistant,
+          prompt: buildComputerUseSystemPrompt({
+            assistantPrompt: assistant.prompt,
+            availableTools: BUILT_IN_TOOLS.map((tool) => ({
+              name: tool.name,
+              description: tool.description
+            })),
+            runningApplications
+          })
+        }
+        contentForSend = buildComputerUseInstruction({
+          taskGoal: text,
+          round: 1
+        })
+        filesForSend = [...(uploadedFiles || []), ...screenshots]
+      }
+
+      const baseUserMessage: MessageInputBaseParams = { assistant: assistantForSend, topic, content: contentForSend }
+      if (filesForSend) {
+        baseUserMessage.files = filesForSend
       }
       if (mentionedModels.length) {
         baseUserMessage.mentions = mentionedModels
@@ -261,7 +291,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
       const { message, blocks } = getUserMessage(baseUserMessage)
       message.traceId = parent?.spanContext().traceId
 
-      dispatch(_sendMessage(message, blocks, assistant, topic.id))
+      dispatch(_sendMessage(message, blocks, assistantForSend, topic.id))
 
       setText('')
       setFiles([])
@@ -272,9 +302,12 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     } catch (error) {
       logger.warn('Failed to send message:', error as Error)
       parent?.recordException(error as Error)
+    } finally {
+      setComputerUseRunning(false)
     }
   }, [
     assistant,
+    computerUseEnabled,
     topic,
     text,
     mentionedModels,
@@ -282,6 +315,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     dispatch,
     setText,
     setFiles,
+    setComputerUseRunning,
     setTimeoutTimer,
     resizeTextArea,
     focusTextarea

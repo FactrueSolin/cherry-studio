@@ -828,6 +828,11 @@
       "context_count": {
         "tip": "Context / Max Context"
       },
+      "computer_use": {
+        "disable": "Disable computer use",
+        "enable": "Enable computer use",
+        "label": "computer use"
+      },
       "estimated_tokens": {
         "tip": "Estimated tokens"
       },

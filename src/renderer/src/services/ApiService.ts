@@ -8,8 +8,10 @@ import { buildProviderOptions } from '@renderer/aiCore/utils/options'
 import { isDedicatedImageGenerationModel, isEmbeddingModel, isFunctionCallingModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
+import { COMPUTER_USE_MODE_MARKER } from '@renderer/services/computerUse/ComputerUsePromptBuilder'
 import store from '@renderer/store'
 import { hubMCPServer } from '@renderer/store/mcp'
+import { BUILT_IN_TOOLS } from '@renderer/tools'
 import type { Assistant, MCPServer, MCPTool, Model, Provider } from '@renderer/types'
 import { type FetchChatCompletionParams, getEffectiveMcpMode, isSystemProvider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
@@ -229,6 +231,11 @@ export async function fetchChatCompletion({
   if (isPromptToolUse(assistant) || isSupportedToolUse(assistant)) {
     mcpTools.push(...(await fetchMcpTools(assistant)))
   }
+
+  if (assistant.prompt?.includes(COMPUTER_USE_MODE_MARKER)) {
+    mcpTools.push(...BUILT_IN_TOOLS)
+  }
+
   if (prompt) {
     messages = [
       {

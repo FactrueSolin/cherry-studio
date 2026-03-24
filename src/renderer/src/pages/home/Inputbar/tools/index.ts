@@ -15,6 +15,7 @@ import './generateImageTool'
 import './clearTopicTool'
 import './toggleExpandTool'
 import './newContextTool'
+import './computerUseTool'
 // Agent Session tools
 import './createSessionTool'
 import './slashCommandsTool'
