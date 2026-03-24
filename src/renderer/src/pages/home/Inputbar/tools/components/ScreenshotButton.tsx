@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import { ActionIconButton } from '@renderer/components/Buttons'
 import type { FileMetadata } from '@renderer/types'
 import { Tooltip } from 'antd'
@@ -11,6 +12,8 @@ interface Props {
   setFiles: Dispatch<SetStateAction<FileMetadata[]>>
   disabled?: boolean
 }
+
+const logger = loggerService.withContext('ScreenshotButton')
 
 const ScreenshotButton: FC<Props> = ({ files, setFiles, disabled }) => {
   const { t } = useTranslation()
@@ -26,7 +29,8 @@ const ScreenshotButton: FC<Props> = ({ files, setFiles, disabled }) => {
       const screenshots = await window.api.screenshot.captureCurrentDisplay()
       setFiles((prev) => [...prev, ...screenshots])
       window.toast.success(t('chat.input.screenshot.success'))
-    } catch {
+    } catch (error) {
+      logger.error('Failed to capture screenshot from inputbar button', error as Error)
       window.toast.error(t('chat.input.screenshot.failed'))
     } finally {
       setCapturing(false)

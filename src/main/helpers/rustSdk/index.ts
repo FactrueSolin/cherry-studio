@@ -56,9 +56,19 @@ function getRustSdkCandidatePaths(): string[] {
 }
 
 function resolveRustSdkModulePath(): string {
-  const matched = getRustSdkCandidatePaths().find((candidatePath) => fs.existsSync(candidatePath))
+  const candidatePaths = getRustSdkCandidatePaths()
+  logger.info('Resolving rust-sdk wasm module path', { candidatePaths })
+
+  const matched = candidatePaths.find((candidatePath) => fs.existsSync(candidatePath))
 
   if (!matched) {
+    logger.error(
+      'Rust SDK wasm package not found in any candidate path',
+      new Error('Rust SDK wasm package not found'),
+      {
+        candidatePaths
+      }
+    )
     throw new Error(
       'Rust SDK wasm package not found. Please run `pnpm build:rust-sdk` before using src/main/helpers/rustSdk.'
     )
@@ -72,7 +82,12 @@ export async function loadRustSdk(): Promise<RustSdkModule> {
     rustSdkModulePromise = Promise.resolve().then(() => {
       const modulePath = resolveRustSdkModulePath()
       logger.info('Loading rust-sdk wasm module', { modulePath })
-      return require_(modulePath) as RustSdkModule
+      try {
+        return require_(modulePath) as RustSdkModule
+      } catch (error) {
+        logger.error('Failed to load rust-sdk wasm module', error as Error, { modulePath })
+        throw error
+      }
     })
   }
 
