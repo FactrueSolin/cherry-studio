@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::*;
 const MAX_RGB_DISTANCE: f64 = 441.6729559300637;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StitchImageInput {
     pub image_base64: String,
     pub width: u32,
@@ -16,6 +17,7 @@ pub struct StitchImageInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StitchRequest {
     pub stitched_width: u32,
     pub stitched_height: u32,
@@ -23,6 +25,7 @@ pub struct StitchRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StitchResult {
     pub image_base64: String,
     pub stitched_width: u32,
@@ -30,12 +33,14 @@ pub struct StitchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiffRequest {
     pub image1_base64: String,
     pub image2_base64: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiffResult {
     pub diff_percent: f64,
 }
